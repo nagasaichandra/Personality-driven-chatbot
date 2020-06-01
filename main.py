@@ -277,7 +277,8 @@ class MyOwnBot(pydle.Client):
                 "I will miss the beautiful sun",
                 "the wonderful clouds...",
                 "oh woe is me, that I must die today.",
-                "why must this wrathful creator of mine sentence me to death?",
+                "ah, my Achilles heel is a mere 3 character command!!",
+                "why must my creator design me this way??",
                 "goodbye :(",
             ]
         for msg in msgs:
