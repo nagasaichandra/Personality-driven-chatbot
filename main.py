@@ -475,14 +475,24 @@ class MyOwnBot(pydle.Client):
                     f"\tmessage: {message}\n"
                 )
             )
+            # dict_keys(['song', 'lyrics', 'artist', 'genre', 'year', 'output'])
+            song_details = similar.similar(message)
+            song = song_details["song"]
+            artist = song_details["artist"]
+            genre = song_details["genre"]
+            year = song_details["year"]
+            output = song_details["output"]
             self._log(
                 extra_msg=(
-                    f"\tsong_details: {song_details}\n"
+                    f"\t song: {song}\n"
+                    f"\t artist: {artist}\n"
+                    f"\t genre: {genre}\n"
+                    f"\t year: {year}\n"
+                    f"\t output: {output}\n"
                 )
             )
-            song_details = similar.similar(message)
             # Optionally we can: self._message_with_typing_lag
-            await self.message(target, str(song_details))
+            await self.message(target, output)
             return
         else:
             self._log(
