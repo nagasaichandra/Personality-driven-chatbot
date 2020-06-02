@@ -10,6 +10,7 @@ from aiohttp import ClientTimeout
 
 
 import color_utils
+import similar
 
 import inspect
 
@@ -474,9 +475,14 @@ class MyOwnBot(pydle.Client):
                     f"\tmessage: {message}\n"
                 )
             )
-            # send_message_receive_stream(
-            #     sender_id=event.source, message="/action_hello_world"
-            # )
+            self._log(
+                extra_msg=(
+                    f"\tsong_details: {song_details}\n"
+                )
+            )
+            song_details = similar.similar(message)
+            # Optionally we can: self._message_with_typing_lag
+            await self.message(target, str(song_details))
             return
         else:
             self._log(
