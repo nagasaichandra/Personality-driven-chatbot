@@ -1,16 +1,10 @@
 import pandas as pd
 import nltk
-import random
-import sys
-import os
-import re
-# from nltk.stem import WordNetLemmatizer
 from nltk.corpus import stopwords
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import linear_kernel
 import pickle
 nltk.download('punkt')
-#print(os.getcwd())
 data_frame = pd.read_csv('sample_data.csv')
 tf_transformer = pickle.load(open('Model/tfidflyrics.pkl', 'rb'))
 matrix = tf_transformer.transform(data_frame['lyrics'])
@@ -19,34 +13,56 @@ def similar_songs(lyric):
     tf_new = TfidfVectorizer(analyzer='word', ngram_range=(1, 3), stop_words='english', lowercase=True, vocabulary = tf_transformer.vocabulary_)
     x_matrix = tf_new.fit_transform([lyric])
     cosine_similarities = linear_kernel(matrix, x_matrix).flatten()
-    related_docs_indices = [i for i in cosine_similarities.argsort()[::-1]]
-    list_2_similar_songs = [(index, cosine_similarities[index]) for index in related_docs_indices][0:2]
-    output = list()
-    for i in list_2_similar_songs:
-        dict_m = {'song': data_frame.iloc[i[0]]['song'], 'lyrics': data_frame.iloc[i[0]]['lyrics'],
-                  'artist': data_frame.iloc[i[0]]['artist'], 'genre': data_frame.iloc[i[0]]['genre']}
-        output.append(dict_m)
-    return output
+    related_doc_index = cosine_similarities.argmax()
+    i = related_doc_index
+    dict_m = {'song': data_frame.iloc[i]['song'], 'lyrics': data_frame.iloc[i]['lyrics'], 'artist': data_frame.iloc[i]['artist'], 'genre': data_frame.iloc[i]['genre'], 'year': data_frame.iloc[i]['year']}
+    return dict_m
+
 nltk.download('stopwords')
-stopwords = set(stopwords.words('english'))
-# print(stopwords)
+
 def remove_stopwords(text):
-  new_string = str()
-  for word in nltk.word_tokenize(text):
-    if word.lower() not in stopwords:
-      new_string = new_string + ' ' + word.lower()
-  return new_string
+  sen_new = " ".join([i.lower() for i in nltk.word_tokenize(text) if i.lower() not in stopwords.words('english')])
+  return sen_new
 
 
-def regex_match(text, similar_songs):
-  return None
+def sing(song_details, text):
+  """
+
+  The way it works is 
+
+  >>> (optional) user commands tweety to sing
+  >>> tweety: "la la la la la"
+  >>> user: "what is that song?"
+  >>> tweety: "I'm singing {song_name} by {artist}"
+
+  TODO: given question, lookup song_details & return... also sing?
+
+  Args:
+      text: the user's message 
+      song_details: a dictionary of {
+        "genre": "...", 
+        "lyrics":"...",
+        "artist":"...",
+        "song_name": "...",
+        "year": "...",
+      }
+  """
+  for word in nltk.word_tokenize(text):  
+    lines = song_details['lyrics'].split('\n')
+    # print(lines)
+    for i in range(len(lines)):
+      if word in lines[i].lower():
+        if i != 0:
+          return lines[i-1] + ' -- ' + lines[i]
+        else:
+          return lines[i] + ' -- ' + lines[i+1]
 
 
-text = 'Are bob and sue items?'
-text = remove_stopwords(text)
-# print(text)
-similar_songs = similar_songs(text)
-# details = get_song_details(similar_songs)
-# for i in similar_songs:
-#   lyrics = i['lyrics']
-#   sent_tokenizer = 
+def similar(text):
+  text = remove_stopwords(text)
+  similar_song = similar_songs(text)
+  similar_song['output'] =  sing(similar_song, text)
+  return similar_song
+
+
+print(similar('We will rock you'))

@@ -279,7 +279,7 @@ class MyOwnBot(pydle.Client):
                 "oh woe is me, that I must die today.",
                 "ah, my Achilles heel is a mere 3 character command!!",
                 "why must my creator design me this way??",
-                "goodbye :(",
+                "goodbye!",
             ]
         for msg in msgs:
             await self._message_with_typing_lag(self.channel, msg)
