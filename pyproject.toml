@@ -9,6 +9,11 @@ description = ""
 name = "ircbot"
 version = "0.1.0"
 [tool.poetry.dependencies]
+## torch is too large for repl.it
+# torch = "1.4.0"
+## allennlp needs torch
+# allennlp = {version = "1.0.0rc3", allows-prereleases = true}
+# allennlp-models = {version = "1.0.0rc3", allows-prereleases = true}
 pydle = "^0.9.3"
 python = "^3.7"
 pandas = "^1.0"
@@ -16,6 +21,5 @@ sklearn = "^0.0.0"
 black = {version = "^18.3-alpha.0", allows-prereleases = true}
 aiohttp = "^3.6"
 nltk = "^3.5"
-allennlp = "1.0.0rc3"
-allennlp-models = "1.0.0rc3"
+
 [tool.poetry.dev-dependencies]
