@@ -24,6 +24,8 @@ import asyncio
 from typing import List, Optional, Text
 from enum import Enum
 
+import srl
+
 try:
     from pydle.client import DEFAULT_NICKNAME
 except Exception:
@@ -172,14 +174,43 @@ async def send_message_receive_stream(
     )
 
 
-# Simple echo bot.
-class MyOwnBot(pydle.Client):
+MEMORY_COLUMNS = [
+    "target",
+    "channel",
+    "username",
+    "nickname",
+    "by",
+    "kicker",
+    "_they_talking_to_me",
+    "_they_talking_about_me",
+    "function",
+    "maybe_me",
+    "message",
+    srl.SRL_TAGS.VERB,
+    srl.SRL_TAGS.AGENT,
+    srl.SRL_TAGS.PATIENT,
+    srl.SRL_TAGS.TEMPORAL,
+    srl.SRL_TAGS.ARGM_LOC,  # location
+]
+
+
+class IRCBot(pydle.Client):
     SPAM_BUFFER_SIZE = 5  # elements in list
     SPAM_LIMIT = 5  # seconds
     LAG_MAX = 3  # foaad said 3 second delay max
     LAG_MIN = 1  # foaad said 1 second delay min
     ADJUST_ACPM = 1
     SPAM_BUFFER = []
+
+    def __init__(self, username, channel, **kwargs):
+        super(IRCBot, self).__init__(username, **kwargs)
+        self.channel = channel
+        self.username = username
+        self.AVG_CHARS_PER_MIN = AVG_CHARS_PER_MIN * self.ADJUST_ACPM
+        self._log_self(is_init=True, info=True)
+
+    def _remember(self, data: dict):
+        pass
 
     def _log(self, is_init=False, extra_msg="", info=False):
         logLevelFunc = logger.info if info else logger.debug  # default debug
@@ -197,12 +228,12 @@ class MyOwnBot(pydle.Client):
         logLevelFunc(
             init_msg
             + (
-                f"\t\nself.channel: {self.channel}\n"
-                f"\tself.username: {self.username}\n"
-                f"\tself.nickname: {self.nickname}\n"
-                f"\tself.SPAM_BUFFER_SIZE: {self.SPAM_BUFFER_SIZE}\n"
-                f"\tself.SPAM_LIMIT: {self.SPAM_LIMIT}\n"
-                f"\tself.SPAM_BUFFER: {self.SPAM_BUFFER}\n"
+                f"\t\n self.channel: {self.channel}\n"
+                f"\t self.username: {self.username}\n"
+                f"\t self.nickname: {self.nickname}\n"
+                f"\t self.SPAM_BUFFER_SIZE: {self.SPAM_BUFFER_SIZE}\n"
+                f"\t self.SPAM_LIMIT: {self.SPAM_LIMIT}\n"
+                f"\t self.SPAM_BUFFER: {self.SPAM_BUFFER}\n"
             )
             + "-" * 10
             + "\n"
@@ -213,13 +244,6 @@ class MyOwnBot(pydle.Client):
                 "CALLER": inspect.stack()[1].function
             },
         )
-
-    def __init__(self, username, channel, **kwargs):
-        super(MyOwnBot, self).__init__(username, **kwargs)
-        self.channel = channel
-        self.username = username
-        self.AVG_CHARS_PER_MIN = AVG_CHARS_PER_MIN * self.ADJUST_ACPM
-        self._log_self(is_init=True, info=True)
 
     def _parse_me_message_pair(self, msg: Text) -> List[Optional[Text]]:
         self._log_self()
@@ -508,7 +532,7 @@ class MyOwnBot(pydle.Client):
             return
 
 
-client = MyOwnBot(
+client = IRCBot(
     username="plato-bot", channel="#CPE582", realname="Student of Soccertees"
 )
 client.run(hostname="irc.freenode.net", tls=True, tls_verify=False)

@@ -15,4 +15,7 @@ pandas = "^1.0"
 sklearn = "^0.0.0"
 black = {version = "^18.3-alpha.0", allows-prereleases = true}
 aiohttp = "^3.6"
+nltk = "^3.5"
+allennlp = "1.0.0rc3"
+allennlp-models = "1.0.0rc3"
 [tool.poetry.dev-dependencies]
