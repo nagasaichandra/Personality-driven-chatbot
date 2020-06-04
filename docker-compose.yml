@@ -1,0 +1,28 @@
+version: '3'
+
+services:
+  elasticsearch-service:
+    build: ./product
+    volumes:
+      - ./product:/usr/src/app
+    ports:
+      - 5001:80
+
+  ircbot-service:
+    image: php:apache
+    volumes:
+      - ./website:/var/www/html
+    ports:
+      - 5000:80
+    depends_on:
+      - product-service
+
+  rasa-service:
+    image: php:apache
+    volumes:
+      - ./website:/var/www/html
+    ports:
+      - 5000:80
+    depends_on:
+      - product-service
+

@@ -1,0 +1,26 @@
+[
+  {
+    "text": "die",
+    "intent": "stop_program",
+    "intent_prediction": {
+      "name": "deny",
+      "confidence": 0.4970933794975281
+    }
+  },
+  {
+    "text": "descend into the unknown",
+    "intent": "stop_program",
+    "intent_prediction": {
+      "name": "bot_challenge",
+      "confidence": 0.4620641767978668
+    }
+  },
+  {
+    "text": "step into your own grave",
+    "intent": "stop_program",
+    "intent_prediction": {
+      "name": "bot_challenge",
+      "confidence": 0.7326623201370239
+    }
+  }
+]
