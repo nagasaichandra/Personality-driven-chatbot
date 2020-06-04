@@ -7,7 +7,7 @@ import pickle
 
 nltk.download("punkt")
 data_frame = pd.read_csv("sample_data.csv")
-tf_transformer = pickle.load(open("Model/tfidflyrics.pkl", "rb"))
+tf_transformer = pickle.load(open("models/tfidflyrics.pkl", "rb"))
 matrix = tf_transformer.transform(data_frame["lyrics"])
 
 
@@ -140,7 +140,7 @@ def remove_swear(text):
 def sing(song_details, text):
     """
 
-  The way it works is 
+  The way it works is
 
   >>> (optional) user commands tweety to sing
   >>> tweety: "la la la la la"
@@ -150,9 +150,9 @@ def sing(song_details, text):
   TODO: given question, lookup song_details & return... also sing?
 
   Args:
-      text: the user's message 
+      text: the user's message
       song_details: a dictionary of {
-        "genre": "...", 
+        "genre": "...",
         "lyrics":"...",
         "artist":"...",
         "song_name": "...",

@@ -10,4 +10,4 @@ tfidf = TfidfVectorizer(
 )
 tf_transformer = tfidf.fit(sample["lyrics"])
 # print(tf_transformer)
-pickle.dump(tf_transformer, open("Model/tfidflyrics.pkl", "wb"))
+pickle.dump(tf_transformer, open("models/tfidflyrics.pkl", "wb"))
