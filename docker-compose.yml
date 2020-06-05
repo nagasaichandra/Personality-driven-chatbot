@@ -46,6 +46,9 @@ services:
     build: ./ircbot
     volumes:
       - ./ircbot:/ircbot
+    environment:
+      - "RASA_IRC_WEBHOOK_BASE_URL=http://localhost:5005"
+      # - "RASA_IRC_WEBHOOK_BASE_URL=https://582rasa.onrender.com"
     ports:
       # DEFAULT_TLS_PORT = 6697
       # DEFAULT_PORT = 6667
