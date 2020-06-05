@@ -1,28 +1,38 @@
-version: '3'
+version: '3.8'
 
 services:
-  elasticsearch-service:
-    build: ./product
+  rasabot-service:
+    build: ./rasabot
     volumes:
-      - ./product:/usr/src/app
+      # map local-directory :to: container-directory
+      - ./rasabot:/rasabot
     ports:
-      - 5001:80
+      # for rasa
+      - 5005:5005
+      # for rasa actions
+      - 5055:5055
+
+  elasticsearch-service:
+    build: ./elastic
+    volumes:
+      - ./elastic:/elastic
+    ports:
+      # map local-port :to: container-port
+      # https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-network.html
+      - 9200:9200
 
   ircbot-service:
-    image: php:apache
+    build: ./ircbot
     volumes:
-      - ./website:/var/www/html
+      - ./ircbot:/ircbot
     ports:
-      - 5000:80
+      # DEFAULT_TLS_PORT = 6697
+      # DEFAULT_PORT = 6667
+      # https://github.com/Shizmob/pydle/blob/013057ffc48977e98ce9b477a091673b991c1d08/pydle/features/tls.py#L9
+      # https://github.com/Shizmob/pydle/blob/013057ffc48977e98ce9b477a091673b991c1d08/pydle/features/rfc1459/protocol.py#L13
+      - 6667:6667
+      - 6697:6697
     depends_on:
-      - product-service
-
-  rasa-service:
-    image: php:apache
-    volumes:
-      - ./website:/var/www/html
-    ports:
-      - 5000:80
-    depends_on:
-      - product-service
+      # without rasa... ircbot can run, but it's not so smart 🤓
+      - rasabot-service
 

@@ -1,32 +1,40 @@
 from enum import Enum
-
+import os
 from allennlp.predictors.predictor import Predictor
 import allennlp_models.syntax.srl
 
-BERT_SRL_MODEL_PATH = "https://storage.googleapis.com/allennlp-public-models/bert-base-srl-2020.03.24.tar.gz"
+if "bert-base-srl-2020.03.24.tar.gz" in os.listdir():
+    print("SUCCESS: found `bert-base-srl-2020.03.24.tar.gz` in current directory")
+    BERT_SRL_MODEL_PATH = "bert-base-srl-2020.03.24.tar.gz"
+else:
+    print("WARNING: failed to find `bert-base-srl-2020.03.24.tar.gz` in current directory")
+    print("WARNING: downloading from allennlp's public models storage")
+    BERT_SRL_MODEL_PATH = "https://storage.googleapis.com/allennlp-public-models/bert-base-srl-2020.03.24.tar.gz"
 
+print("BERT_SRL_MODEL_PATH: ", BERT_SRL_MODEL_PATH)
+print("os.getcwd(): ", os.getcwd())
 predictor = Predictor.from_path(BERT_SRL_MODEL_PATH)
 
 
 class SRL_TAGS(Enum):
     """
-    > The Arg0 label is assigned to arguments which are understood as agents, causers, or experiencers. 
-    > The Arg1 label is usually assigned to the patient argument, 
-    > i.e. the argument which undergoes the change of state or is being affected by the action.  
-    
+    > The Arg0 label is assigned to arguments which are understood as agents, causers, or experiencers.
+    > The Arg1 label is usually assigned to the patient argument,
+    > i.e. the argument which undergoes the change of state or is being affected by the action.
+
     > Frameset leave.01 "move away from":
     >     Arg0: entity leaving
     >     Arg1: place left
 
     > Frameset leave.02 "give":
     >     Arg0: giver
-    >     Arg1: thing given 
+    >     Arg1: thing given
     >     Arg2: beneficiary
-    
-    > In general, if an argument satisfies two roles, 
-    > the highest ranked argument label should be selected, 
+
+    > In general, if an argument satisfies two roles,
+    > the highest ranked argument label should be selected,
     > where Arg0 >> Arg1 >> Arg2>>... .
-    
+
     > 1.4.13 Modals (MOD)
     > Modals are: will, may, can, must, shall, might, should, could, would.
     > These elements are consistently labeled in the TreeBank as ‘MOD.’
@@ -38,7 +46,7 @@ class SRL_TAGS(Enum):
     * https://catalog.ldc.upenn.edu/docs/LDC2007T21/propbank/english-propbank.pdf
     * https://www.aclweb.org/anthology/J05-1004/
     * https://www.aclweb.org/anthology/W12-4501/
-    * https://www.aclweb.org/anthology/P15-4009/    
+    * https://www.aclweb.org/anthology/P15-4009/
     """
 
     NO_TAG = "O"
