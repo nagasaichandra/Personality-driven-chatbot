@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   rasabot-service:
@@ -11,15 +11,36 @@ services:
       - 5005:5005
       # for rasa actions
       - 5055:5055
+    command:
+      - run
+      # - run --enable-api
+      # - run -vv --model /rasabot/models --verbose --credentials rasabot/credentials.yml --endpoints rasabot/endpoints.yml --debug --enable-api
 
   elasticsearch-service:
+    # https://www.elastic.co/guide/en/elasticsearch/reference/current/docker.html
     build: ./elastic
     volumes:
       - ./elastic:/elastic
+    environment:
+      # - node.name=es01
+      - cluster.name=elastic-docker-single-node
+      - discovery.type=single-node
+      # - discovery.seed_hosts=es02,es03
+      # - cluster.initial_master_nodes=es01,es02,es03
+      # - bootstrap.memory_lock=true
+      # 512 MB of memory ??
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
     ports:
       # map local-port :to: container-port
       # https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-network.html
       - 9200:9200
+      - 9300:9300
+    # networks:
+    #   - elastic
 
   ircbot-service:
     build: ./ircbot
@@ -35,4 +56,3 @@ services:
     depends_on:
       # without rasa... ircbot can run, but it's not so smart 🤓
       - rasabot-service
-

@@ -3,17 +3,20 @@ import os
 from allennlp.predictors.predictor import Predictor
 import allennlp_models.syntax.srl
 
-if "bert-base-srl-2020.03.24.tar.gz" in os.listdir():
-    print("SUCCESS: found `bert-base-srl-2020.03.24.tar.gz` in current directory")
-    BERT_SRL_MODEL_PATH = "bert-base-srl-2020.03.24.tar.gz"
-else:
-    print("WARNING: failed to find `bert-base-srl-2020.03.24.tar.gz` in current directory")
-    print("WARNING: downloading from allennlp's public models storage")
-    BERT_SRL_MODEL_PATH = "https://storage.googleapis.com/allennlp-public-models/bert-base-srl-2020.03.24.tar.gz"
 
-print("BERT_SRL_MODEL_PATH: ", BERT_SRL_MODEL_PATH)
-print("os.getcwd(): ", os.getcwd())
-predictor = Predictor.from_path(BERT_SRL_MODEL_PATH)
+def get_predictor():
+    if "bert-base-srl-2020.03.24.tar.gz" in os.listdir():
+        print("SUCCESS: found `bert-base-srl-2020.03.24.tar.gz` in current directory")
+        BERT_SRL_MODEL_PATH = "bert-base-srl-2020.03.24.tar.gz"
+    else:
+        print("WARNING: failed to find `bert-base-srl-2020.03.24.tar.gz` in current directory")
+        print("WARNING: downloading from allennlp's public models storage")
+        BERT_SRL_MODEL_PATH = "https://storage.googleapis.com/allennlp-public-models/bert-base-srl-2020.03.24.tar.gz"
+
+    print("BERT_SRL_MODEL_PATH: ", BERT_SRL_MODEL_PATH)
+    print("os.getcwd(): ", os.getcwd())
+    predictor = Predictor.from_path(BERT_SRL_MODEL_PATH)
+    return predictor
 
 
 class SRL_TAGS(Enum):

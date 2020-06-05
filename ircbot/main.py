@@ -26,6 +26,8 @@ from enum import Enum
 
 import srl
 
+predictor = srl.get_predictor()
+
 try:
     from pydle.client import DEFAULT_NICKNAME
 except Exception:
@@ -324,7 +326,7 @@ class IRCBot(pydle.Client):
 
     def _is_from_user(self, target, by, message):
         """
-        False if looks like 
+        False if looks like
             target:*
             by: tepper.freenode.net
             message: *** Looking up your hostname...

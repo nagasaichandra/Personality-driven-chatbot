@@ -20,6 +20,8 @@ Nagasai Chandra, Teja Kalvakolanu, Michael Fekadu
 docker-compose up
 ```
 
+> Note: ElasticSearch needs a lot of memory. If it crashes, try increasing docker's memory allocation to >= 4GB.
+
 [1]: #todo_insert_link
 [2]: #todo_insert_link
 [3]: https://docs.docker.com/get-docker/
