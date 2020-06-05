@@ -34,11 +34,15 @@ ENV RASA_SHELL_STREAM_READING_TIMEOUT_IN_SECONDS=${RASA_SHELL_STREAM_READING_TIM
 # copy source code over to image
 COPY . /rasabot
 
+# https://hub.docker.com/r/rasa/rasa/dockerfile
+# this service's workdir is "/rasabot" and not the default "/app"
+WORKDIR /rasabot
+
+
 CMD ["rasa", "run", "-vv", \
-    "--model", "rasabot/models", \
+    "--model", "/rasabot/models", \
     "--verbose" \
-    "--credentials", "rasabot/credentials.yml", \
-    "--endpoints", "rasabot/endpoints.yml", \
+    "--credentials", "/rasabot/credentials.yml", \
+    "--endpoints", "/rasabot/endpoints.yml", \
     "--debug", \
-    "--enable-api", \
-    "--connector", "rasabot.irc_channel.IRCInput" ]
+    "--enable-api" ]
