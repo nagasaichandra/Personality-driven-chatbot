@@ -137,3 +137,4 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 .DS_Store
+ircbot/bert-base-srl-2020.03.24.tar.gz
