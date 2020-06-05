@@ -26,6 +26,8 @@ from enum import Enum
 
 import srl
 
+import requests
+
 # predictor = srl.get_predictor()
 
 try:
@@ -51,6 +53,7 @@ except (ModuleNotFoundError, NotImplementedError):
     DEFAULT_ENCODING = "utf-8"
     INTENT_MESSAGE_PREFIX = "/"
 
+# TODO: use something similar os.path.join to avoid any bugginess with forgetting "/" before the path
 DEFAULT_WEBHOOK_PATH = "/webhooks/rest/webhook"
 IRC_WEBHOOK_BASE_URL = os.environ.get("RASA_IRC_WEBHOOK_BASE_URL", DEFAULT_SERVER_URL)
 IRC_WEBHOOK_PATH = os.environ.get("RASA_IRC_WEBHOOK_PATH", DEFAULT_WEBHOOK_PATH)
@@ -59,6 +62,11 @@ IRC_SERVER = os.environ.get("RASA_IRC_SERVER", "irc.freenode.net")
 IRC_PORT = os.environ.get("RASA_IRC_PORT", 6667)
 STREAM_READING_TIMEOUT_ENV = "RASA_SHELL_STREAM_READING_TIMEOUT_IN_SECONDS"
 DEFAULT_STREAM_READING_TIMEOUT_IN_SECONDS = 10
+
+ELASTIC_SEARCH_BASE_URL = os.environ.get(
+    "ELASTIC_SEARCH_BASE_URL", "http://localhost:9200"
+)
+ELASTIC_SEARCH_INDEX_PATH = os.environ.get("ELASTIC_SEARCH_INDEX_PATH", "/memory")
 
 logging.warning(f"DEFAULT_WEBHOOK_PATH: {DEFAULT_WEBHOOK_PATH}")
 logging.warning(f"IRC_WEBHOOK_BASE_URL: {IRC_WEBHOOK_BASE_URL}")
@@ -70,7 +78,8 @@ logging.warning(f"STREAM_READING_TIMEOUT_ENV: {STREAM_READING_TIMEOUT_ENV}")
 logging.warning(
     f"DEFAULT_STREAM_READING_TIMEOUT_IN_SECONDS: {DEFAULT_STREAM_READING_TIMEOUT_IN_SECONDS}"
 )
-
+logging.warning(f"ELASTIC_SEARCH_BASE_URL: {ELASTIC_SEARCH_BASE_URL}")
+logging.warning(f"ELASTIC_SEARCH_INDEX_PATH: {ELASTIC_SEARCH_INDEX_PATH}")
 
 # https://www.livechat.com/typing-speed-test/
 AVG_WORD_PER_MIN = 40
@@ -189,6 +198,230 @@ async def send_message_receive_stream(
     )
 
 
+async def forget_memory(
+    server_url=ELASTIC_SEARCH_BASE_URL,
+    index_path=ELASTIC_SEARCH_INDEX_PATH,
+    raise_for_status=False,
+):
+    """
+    DELETE memory
+    """
+    # example url : "http://localhost:9200/memory"
+    url = f"{server_url}{index_path}"
+
+    # Define timeout to not keep reading in case the server crashed in between
+    timeout = _get_stream_reading_timeout()
+
+    async with aiohttp.ClientSession(timeout=timeout) as session:
+        async with session.delete(url, raise_for_status=raise_for_status) as resp:
+            logger.info(f"called forget_memory and got resp.status = {resp.status}")
+
+
+def initialize_memory(
+    server_url=ELASTIC_SEARCH_BASE_URL,
+    index_path=ELASTIC_SEARCH_INDEX_PATH,
+    raise_for_status=True,
+):
+    """
+    # create memory
+    PUT memory
+
+    # set mappings
+    PUT memory/_mappings
+    {
+        "properties" : {
+            "sender" : {
+            "type" : "text",
+            "fields" : {
+                "keyword" : {
+                "type" : "keyword",
+                "ignore_above" : 256
+                }
+            }
+            },
+            "message" : {
+            "type" : "text"
+            }
+        }
+    }
+    """
+    payload = {
+        "properties": {
+            "sender": {
+                "type": "text",
+                "fields": {"keyword": {"type": "keyword", "ignore_above": 256}},
+            },
+            "message": {"type": "text"},
+        }
+    }
+
+    # example url : "http://localhost:9200/memory"
+    url = f"{server_url}{index_path}"
+
+    # Define timeout to not keep reading in case the server crashed in between
+    timeout = _get_stream_reading_timeout()
+
+    # forget first??
+    # requests_retry_session(retries=100).delete('http://localhost:9200/memory')
+
+    # create the memory index
+    requests_retry_session(retries=100).put(url)
+
+    # https://docs.aiohttp.org/en/stable/client_reference.html#aiohttp.ClientSession
+    # default timeout is 5min
+    # async with aiohttp.ClientSession(timeout=None) as session:
+    #     async with session.put(url, raise_for_status=raise_for_status) as resp:
+    #         async for line in resp.content:
+    #             if line:
+    #                 yield json.loads(line.decode(DEFAULT_ENCODING))
+
+    # example url : "http://localhost:9200/memory/_mappings"
+    url = f"{url}/_mappings"
+
+    # define the mapping types
+    requests_retry_session(retries=100).put(url, json=payload)
+
+    # async with aiohttp.ClientSession(timeout=timeout) as session:
+    #     async with session.put(url, json=payload, raise_for_status=True) as resp:
+    #         async for line in resp.content:
+    #             if line:
+    #                 yield json.loads(line.decode(DEFAULT_ENCODING))
+
+
+import requests
+from requests.adapters import HTTPAdapter
+from requests.packages.urllib3.util.retry import Retry
+
+
+def requests_retry_session(
+    retries=100,
+    # after 100, that's definitely something wrong.
+    backoff_factor=0.3,
+    status_forcelist=(500, 502, 504),
+    session=None,
+):
+    """
+    Source:
+        https://www.peterbe.com/plog/best-practice-with-retries-with-requests
+    """
+    session = session or requests.Session()
+    retry = Retry(
+        total=retries,
+        read=retries,
+        connect=retries,
+        backoff_factor=backoff_factor,
+        status_forcelist=status_forcelist,
+    )
+    adapter = HTTPAdapter(max_retries=retry)
+    session.mount("http://", adapter)
+    session.mount("https://", adapter)
+    return session
+
+
+async def save_to_memory(
+    sender,
+    message,
+    server_url=ELASTIC_SEARCH_BASE_URL,
+    index_path=ELASTIC_SEARCH_INDEX_PATH,
+    raise_for_status=False,
+):
+    """
+    ## add a new thing into the memory index
+    # remember something
+    POST /memory/_doc
+    {
+        "sender" : "plato",
+        "message" : "I am plato"
+    }
+    """
+    payload = {
+        "sender": sender,
+        "message": message,
+    }
+
+    # example url : "http://localhost:9200/memory"
+    url = f"{server_url}{index_path}/_doc"
+
+    # Define timeout to not keep reading in case the server crashed in between
+    timeout = _get_stream_reading_timeout()
+
+    # create the memory
+    async with aiohttp.ClientSession(timeout=timeout) as session:
+        async with session.post(
+            url, json=payload, raise_for_status=raise_for_status
+        ) as resp:
+            async for line in resp.content:
+                if line:
+                    yield json.loads(line.decode(DEFAULT_ENCODING))
+
+
+async def get_from_memory(
+    message,
+    server_url=ELASTIC_SEARCH_BASE_URL,
+    index_path=ELASTIC_SEARCH_INDEX_PATH,
+    raise_for_status=False,
+):
+    """
+    # How to query the elastic search memory
+    ## notice the text search
+    GET /memory/_search
+    {
+        "query": {
+            "simple_query_string": {
+                "query": "plato am i",
+                "fields": []  # by default searches on all fields.
+            }
+        }
+    }
+
+    result will be
+    {
+        ...
+        "hits" : {
+            "total" : { "value" : 5, "relation" : "eq" },
+            "max_score" : 1.6421977,
+            "hits" : [
+                {
+                    "_index" : "memory",
+                    "_type" : "_doc",
+                    "_id" : "HUlMhnIBk76dIaGSq-DW",
+                    "_score" : 1.6421977,
+                    "_source" : {
+                    "sender" : "plato",
+                    "message" : "I am plato"
+                    }
+                },
+                { ... },
+                { ... },
+            ]
+        }
+    }
+    """
+    payload = {
+        "query": {
+            "simple_query_string": {
+                "query": message,
+                "fields": [],  # by default searches on all fields.
+            }
+        }
+    }
+
+    # example url : "http://localhost:9200/memory"
+    url = f"{server_url}{index_path}/_search"
+
+    # Define timeout to not keep reading in case the server crashed in between
+    timeout = _get_stream_reading_timeout()
+
+    # create the memory
+    async with aiohttp.ClientSession(timeout=timeout) as session:
+        async with session.get(
+            url, json=payload, raise_for_status=raise_for_status
+        ) as resp:
+            async for line in resp.content:
+                if line:
+                    yield json.loads(line.decode(DEFAULT_ENCODING))
+
+
 MEMORY_COLUMNS = [
     "target",
     "channel",
@@ -223,6 +456,8 @@ class IRCBot(pydle.Client):
         self.username = username
         self.AVG_CHARS_PER_MIN = AVG_CHARS_PER_MIN * self.ADJUST_ACPM
         self._log_self(is_init=True, info=True)
+        self.cached_song_details = None
+        initialize_memory()
 
     def _remember(self, data: dict):
         pass
@@ -313,6 +548,7 @@ class IRCBot(pydle.Client):
             "These are my commands:\n"
             "\t usage -- this message \n"
             "\t die -- I will end my process \n"
+            "\t forget -- I will nuke my brain cells \n"
         )
         fun_things = (
             "These are the fun things I do:\n"
@@ -321,6 +557,21 @@ class IRCBot(pydle.Client):
         )
         usage_reply = commands + "\n" + fun_things
         await self.message(target, usage_reply)
+
+    async def _forget(self, msgs=[]):
+        """
+        """
+        if msgs == []:
+            msgs = [
+                "okay, I'll start destroying my brain cells...",
+                "...",
+                "...",
+                "who are you?",
+            ]
+        for msg in msgs:
+            await self._message_with_typing_lag(self.channel, msg)
+            # TODO: consider a smart check here, rather than ignoring resp.status on each call
+            await forget_memory(raise_for_status=False)
 
     async def _die(self, msgs=[]):
         """
@@ -466,6 +717,37 @@ class IRCBot(pydle.Client):
         elif parsed_message == "usage":
             await self._usage(target, parsed_message)
             return
+        elif parsed_message == "forget":
+            await self._forget()
+            return
+        elif "remember" in parsed_message:
+            parsed_message = parsed_message.replace("remember", "").strip()
+            memory_results = get_from_memory(f"{source} {parsed_message}")
+            default_dunder_source = {
+                "sender": "um who was it?",
+                "message": "actually I don't recall",
+            }
+            default_top_hit = {"_source": default_dunder_source}
+            async for res in memory_results:  # noqa
+                hits = res.get("hits", {"hits": {"no_hits": "nothing"}}).get(
+                    "hits", [default_top_hit, default_top_hit]
+                )
+                self._log(
+                    extra_msg=(
+                        f"res: {res}" f"hits: {hits}" f"type(hits): {type(hits)}"
+                    )
+                )
+                # first hit is always the most recent message
+                # second hit is the most relevant after that one
+                for hit, i in zip(hits, [1, 2, 3]):
+                    top_hit = hit.get("_source", default_dunder_source)
+                    top_hit_sender = top_hit["sender"]
+                    top_hit_message = top_hit["message"]
+                    await self.message(
+                        target,
+                        f'I remember when {top_hit_sender} said, "{top_hit_message}"',
+                    )
+            return
         else:
             # await self._message_with_typing_lag(
             #     target, f"hmm.. let me think about that...: {parsed_message}"
@@ -510,6 +792,12 @@ class IRCBot(pydle.Client):
         # .     8. Traits
 
         maybe_me, message = self._parse_me_message_pair(message)
+
+        elastic_responses = save_to_memory(sender=source, message=message)
+
+        async for res in elastic_responses:  # noqa
+            self._log(extra_msg=(f"res: {res}"))
+
         if self._they_talking_to_me(maybe_me, message):
             # if they're talking to me, I must parse the command.
             self._log(
@@ -531,6 +819,7 @@ class IRCBot(pydle.Client):
             )
             # dict_keys(['song', 'lyrics', 'artist', 'genre', 'year', 'output'])
             song_details = similar.similar(message)
+            self.cached_song_details = song_details
             song = song_details["song"]
             artist = song_details["artist"]
             genre = song_details["genre"]
@@ -548,6 +837,29 @@ class IRCBot(pydle.Client):
             # Optionally we can: self._message_with_typing_lag
             await self.message(target, output)
             return
+        elif (
+            # TODO: use nltk.WH_WORDS or spacy.WH_WORDS whatever it is...
+            "who" in message
+            or "what" in message
+            or "when" in message
+            or "?" in message
+            and self.cached_song_details is not None
+        ):
+            # if I have ever sang a song, then give some details
+            song_details = self.cached_song_details
+            song = song_details["song"]
+            artist = song_details["artist"]
+            genre = song_details["genre"]
+            year = song_details["year"]
+            song_detail_message = (
+                "Here's the details of the song I last sang:"
+                f"\t song: {song}\n"
+                f"\t artist: {artist}\n"
+                f"\t genre: {genre}\n"
+                f"\t year: {year}\n"
+            )
+            await self.message(target, song_detail_message)
+            return
         else:
             self._log(
                 extra_msg=(
@@ -556,13 +868,29 @@ class IRCBot(pydle.Client):
                     f"\tmessage: {message}\n"
                 )
             )
-            # send_message_receive_stream(
-            #     sender_id=event.source, message="/action_hello_world"
-            # )
+            # dict_keys(['song', 'lyrics', 'artist', 'genre', 'year', 'output'])
+            song_details = similar.similar(message)
+            song = song_details["song"]
+            artist = song_details["artist"]
+            genre = song_details["genre"]
+            year = song_details["year"]
+            output = song_details["output"]
+            self._log(
+                extra_msg=(
+                    f"\t song: {song}\n"
+                    f"\t artist: {artist}\n"
+                    f"\t genre: {genre}\n"
+                    f"\t year: {year}\n"
+                    f"\t output: {output}\n"
+                )
+            )
+            # Optionally we can: self._message_with_typing_lag
+            await self.message(self.channel, output)
             return
 
 
-client = IRCBot(
-    username="plato-bot", channel="#CPE582", realname="Student of Soccertees"
-)
-client.run(hostname="irc.freenode.net", tls=True, tls_verify=False)
+if __name__ == "__main__":
+    client = IRCBot(
+        username="plato-bot", channel="#platobottest", realname="Student of Soccertees"
+    )
+    client.run(hostname="irc.freenode.net", tls=True, tls_verify=False)
