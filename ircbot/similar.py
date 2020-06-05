@@ -4,7 +4,7 @@ from nltk.corpus import stopwords
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import linear_kernel
 import pickle
-
+import random
 nltk.download("punkt")
 data_frame = pd.read_csv("sample_data.csv")
 tf_transformer = pickle.load(open("models/tfidflyrics.pkl", "rb"))
@@ -178,4 +178,37 @@ def similar(text):
     return similar_song
 
 
-print(similar("You are dangerous"))
+def rhetoric(song_details):
+    # qg = TextGenerator(output_type='question')
+    """
+    Make sure you use random.choice to select one of the element from this output dictionary
+    Send in the current dictionary of song.
+    :param song_details:
+    :return: Dictionary with question:answer
+
+    """
+    genre = 'Do you wanna guess what the genre of this song is?'
+    name = 'Do you wanna guess what the name of this song is?'
+    artist = 'Do you know who the artist was'
+    year = 'Do you know when this lovely song was released?'
+    rhetoric_dict = {genre:song_details['genre'],
+                     name:song_details['song'],
+                     artist:song_details['artist'],
+                     year:song_details['year']}
+    return rhetoric_dict
+#
+
+
+
+# pract = dict()
+# pract['song'] = 'leave me alone'
+# pract['artist'] = 'MJ'
+# pract['year'] = '1999'
+# pract['genre'] = 'pop'
+# pract['album'] = 'christ'
+#
+# print(pract)
+# print(rhetoric(pract))
+
+
+# print(similar("You are dangerous"))
