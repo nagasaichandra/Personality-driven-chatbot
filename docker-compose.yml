@@ -49,6 +49,8 @@ services:
     environment:
       # https://docs.docker.com/compose/networking/
       - "RASA_IRC_WEBHOOK_BASE_URL=http://rasabot-service:5005"
+      - "ELASTIC_SEARCH_BASE_URL=http://elasticsearch-service:9200"
+      - "ELASTIC_SEARCH_INDEX_PATH=/memory"
       # - "RASA_IRC_WEBHOOK_BASE_URL=https://582rasa.onrender.com"
     ports:
       # DEFAULT_TLS_PORT = 6697
@@ -60,3 +62,5 @@ services:
     depends_on:
       # without rasa... ircbot can run, but it's not so smart 🤓
       - rasabot-service
+      # cannot initialize_memory without elasticsearch running
+      - elasticsearch-service
