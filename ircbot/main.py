@@ -26,7 +26,7 @@ from enum import Enum
 
 import srl
 
-predictor = srl.get_predictor()
+# predictor = srl.get_predictor()
 
 try:
     from pydle.client import DEFAULT_NICKNAME
@@ -43,9 +43,11 @@ try:
     # from rasa.core.interpreter import INTENT_MESSAGE_PREFIX
     raise NotImplementedError
 except (ModuleNotFoundError, NotImplementedError):
-    logging.warning("No rasa? That is okay! rasa is a large package to install anyway.")
-    # DEFAULT_SERVER_URL = "http://localhost:5005"
-    DEFAULT_SERVER_URL = "https://582rasa.onrender.com"
+    logging.warning(
+        "No rasa? That is okay!!! rasa is a large package to install anyway."
+    )
+    DEFAULT_SERVER_URL = "http://localhost:5005"
+    # DEFAULT_SERVER_URL = "https://582rasa.onrender.com"
     DEFAULT_ENCODING = "utf-8"
     INTENT_MESSAGE_PREFIX = "/"
 
@@ -57,6 +59,17 @@ IRC_SERVER = os.environ.get("RASA_IRC_SERVER", "irc.freenode.net")
 IRC_PORT = os.environ.get("RASA_IRC_PORT", 6667)
 STREAM_READING_TIMEOUT_ENV = "RASA_SHELL_STREAM_READING_TIMEOUT_IN_SECONDS"
 DEFAULT_STREAM_READING_TIMEOUT_IN_SECONDS = 10
+
+logging.warning(f"DEFAULT_WEBHOOK_PATH: {DEFAULT_WEBHOOK_PATH}")
+logging.warning(f"IRC_WEBHOOK_BASE_URL: {IRC_WEBHOOK_BASE_URL}")
+logging.warning(f"IRC_WEBHOOK_PATH: {IRC_WEBHOOK_PATH}")
+logging.warning(f"IRC_CHANNEL: {IRC_CHANNEL}")
+logging.warning(f"IRC_SERVER: {IRC_SERVER}")
+logging.warning(f"IRC_PORT: {IRC_PORT}")
+logging.warning(f"STREAM_READING_TIMEOUT_ENV: {STREAM_READING_TIMEOUT_ENV}")
+logging.warning(
+    f"DEFAULT_STREAM_READING_TIMEOUT_IN_SECONDS: {DEFAULT_STREAM_READING_TIMEOUT_IN_SECONDS}"
+)
 
 
 # https://www.livechat.com/typing-speed-test/
@@ -294,7 +307,22 @@ class IRCBot(pydle.Client):
         their_msg = str(their_msg).lower()
         return (true_me in maybe_me) or (true_me in their_msg)
 
-    async def die(self, msgs=[]):
+    async def _usage(self, target, message):
+        await self._message_with_typing_lag(self.channel, "I can do a lot....")
+        commands = (
+            "These are my commands:\n"
+            "\t usage -- this message \n"
+            "\t die -- I will end my process \n"
+        )
+        fun_things = (
+            "These are the fun things I do:\n"
+            "\t 🎶🎶 sometimes I siiing 🎶🎵 \n"
+            "\t I try my best to remember stuff from the chat \n"
+        )
+        usage_reply = commands + "\n" + fun_things
+        await self.message(target, usage_reply)
+
+    async def _die(self, msgs=[]):
         """
         """
         self._log_self()
@@ -433,10 +461,10 @@ class IRCBot(pydle.Client):
         """
         self._log()
         if parsed_message == "die":
-            await self.die()
+            await self._die()
             return
         elif parsed_message == "usage":
-            await self._message_with_typing_lag(self.channel, "I can do a lot....")
+            await self._usage(target, parsed_message)
             return
         else:
             # await self._message_with_typing_lag(
