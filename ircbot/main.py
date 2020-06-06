@@ -555,29 +555,37 @@ class IRCBot(pydle.Client):
         their_msg = str(their_msg).lower()
         return (true_me in maybe_me) or (true_me in their_msg)
 
+    async def _users(self, target):
+        reply = f"{str(self.users)}"
+        await self._message_with_typing_lag(target, reply)
+
+    async def _message_list_with_lag(self, target, msgs=[]):
+        for msg in msgs:
+            await self._message_with_typing_lag(target, msg)
+
     async def _usage(self, target, message):
         await self._message_with_typing_lag(self.channel, "I can do a lot....")
         commands = (
-            "These are my commands:\n"
-            "\t usage -- this message \n"
-            "\t die -- I will end my process \n"
-            "\t forget -- I will nuke my brain cells \n"
-            "\t remember -- I will recite back to you from my memory (e.g. 'do you remember the 5th of november?')"
+            "These are my commands:\n",
+            "\t usage -- this message \n",
+            "\t die -- I will end my process \n",
+            "\t forget -- I will nuke my brain cells \n",
+            "\t remember -- I will recite back to you from my memory (e.g. 'do you remember the 5th of november?')",
         )
         fun_things = (
-            "These are the fun things I do:\n"
-            "\t 🎶🎶 sometimes I siiing 🎶🎵 \n"
-            "\t I try my best to remember stuff from the chat \n"
+            "These are the fun things I do:\n",
+            "\t 🎶🎶 sometimes I siiing 🎶🎵 \n",
+            "\t I try my best to remember stuff from the chat \n",
         )
         description = (
-            "Character description :\n"
-            "\t I am obsessed with Poetry and frequently sings to the extent that irritates you.\n"
-            "\t I like to show off about the things I know and pose rhetorical questions.\n"
-            "\t I follow musical bands and I update myself with the songs, artists and other information about the band.\n"
-            "\t Me being shy does not stop me from singing excessively\n"
+            "Character description:\n",
+            "\t I am obsessed with Poetry and frequently sings to the extent that irritates you.\n",
+            "\t I like to show off about the things I know and pose rhetorical questions.\n",
+            "\t I follow musical bands and I update myself with the songs, artists and other information about the band.\n",
+            "\t Me being shy does not stop me from singing excessively\n",
         )
-        usage_reply = commands + "\n" + fun_things + "\n" + description
-        await self.message(target, usage_reply)
+        usage_replies = [*commands, "\n", *fun_things, "\n", *description]
+        await self._message_list_with_lag(target, msgs=usage_replies)
 
     async def _forget(self, msgs=[]):
         """
@@ -740,6 +748,9 @@ class IRCBot(pydle.Client):
         )
         if parsed_message == "die":
             await self._die()
+            return
+        elif parsed_message == "users":
+            await self._users(target)
             return
         elif parsed_message == "usage":
             await self._usage(target, parsed_message)
