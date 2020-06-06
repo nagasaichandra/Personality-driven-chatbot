@@ -845,6 +845,14 @@ class IRCBot(pydle.Client):
             or "?" in message
             and self.cached_song_details is not None
         ):
+            self._log(
+                extra_msg=(
+                    "\n a question \n"
+                    f"\t maybe_me: {maybe_me}\n"
+                    f"\t message: {message}\n"
+                    f"\t self.cached_song_details: {self.cached_song_details}\n"
+                )
+            )
             # if I have ever sang a song, then give some details
             song_details = self.cached_song_details
             song = song_details["song"]
