@@ -5,6 +5,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import linear_kernel
 import pickle
 import random
+
 nltk.download("punkt")
 data_frame = pd.read_csv("sample_data.csv")
 tf_transformer = pickle.load(open("models/tfidflyrics.pkl", "rb"))
@@ -139,25 +140,27 @@ def remove_swear(text):
 
 def sing(song_details, text):
     """
+    The way it works is
 
-  The way it works is
+    >>> (optional) user commands tweety to sing
+    >>> tweety: "la la la la la"
+    >>> user: "what is that song?"
+    >>> tweety: "I'm singing {song_name} by {artist}"
 
-  >>> (optional) user commands tweety to sing
-  >>> tweety: "la la la la la"
-  >>> user: "what is that song?"
-  >>> tweety: "I'm singing {song_name} by {artist}"
+    TODO: given question, lookup song_details & return... also sing?
 
-  TODO: given question, lookup song_details & return... also sing?
+    Args:
+        text: the user's message
+        song_details: a dictionary of {
+            "genre": "...",
+            "lyrics":"...",
+            "artist":"...",
+            "song_name": "...",
+            "year": "...",
+        }
 
-  Args:
-      text: the user's message
-      song_details: a dictionary of {
-        "genre": "...",
-        "lyrics":"...",
-        "artist":"...",
-        "song_name": "...",
-        "year": "...",
-      }
+    Returns:
+        salient_lines : ("line1", "line2")
   """
     for word in nltk.word_tokenize(text):
         lines = song_details["lyrics"].split("\n")
@@ -165,12 +168,19 @@ def sing(song_details, text):
         for i in range(len(lines)):
             if word in lines[i].lower():
                 if i != 0:
-                    return lines[i - 1] + " -- " + lines[i]
+                    return (lines[i - 1], lines[i])
                 else:
-                    return lines[i] + " -- " + lines[i + 1]
+                    return (lines[i], lines[i + 1])
 
 
 def similar(text):
+    """
+    Returns:
+        {
+            ...
+            "output": ("line1", "line2")
+        }
+    """
     text = remove_stopwords(text)
     similar_song = similar_songs(text)
     # similar_song = remove_swear(similar_song)
@@ -185,19 +195,21 @@ def rhetoric(song_details):
     Send in the current dictionary of song.
     :param song_details:
     :return: Dictionary with question:answer
-
     """
-    genre = 'Do you wanna guess what the genre of this song is?'
-    name = 'Do you wanna guess what the name of this song is?'
-    artist = 'Do you know who the artist was'
-    year = 'Do you know when this lovely song was released?'
-    rhetoric_dict = {genre:song_details['genre'],
-                     name:song_details['song'],
-                     artist:song_details['artist'],
-                     year:song_details['year']}
+    genre = "Do you wanna guess what the genre of this song is?"
+    name = "Do you wanna guess what the name of this song is?"
+    artist = "Do you know who the artist was"
+    year = "Do you know when this lovely song was released?"
+    rhetoric_dict = {
+        genre: song_details["genre"],
+        name: song_details["song"],
+        artist: song_details["artist"],
+        year: song_details["year"],
+    }
     return rhetoric_dict
-#
 
+
+#
 
 
 # pract = dict()

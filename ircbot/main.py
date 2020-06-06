@@ -28,6 +28,8 @@ import srl
 
 import requests
 
+import spacy
+
 # predictor = srl.get_predictor()
 
 try:
@@ -442,6 +444,11 @@ MEMORY_COLUMNS = [
 ]
 
 
+class RHETORICAL_REPLY_STATE(Enum):
+    DO_NOT_WAIT = 1
+    WAITING_FOR_USER_REPLY = 2
+
+
 class IRCBot(pydle.Client):
     SPAM_BUFFER_SIZE = 5  # elements in list
     SPAM_LIMIT = 5  # seconds
@@ -449,6 +456,7 @@ class IRCBot(pydle.Client):
     LAG_MIN = 1  # foaad said 1 second delay min
     ADJUST_ACPM = 1
     SPAM_BUFFER = []
+    FRUSTRATION_LIMIT = 30  # seconds
 
     def __init__(self, username, channel, **kwargs):
         super(IRCBot, self).__init__(username, **kwargs)
@@ -457,7 +465,12 @@ class IRCBot(pydle.Client):
         self.AVG_CHARS_PER_MIN = AVG_CHARS_PER_MIN * self.ADJUST_ACPM
         self._log_self(is_init=True, info=True)
         self.cached_song_details = None
+        self.nlp = spacy.load("en_core_web_sm")
         initialize_memory()
+        self.rh = None
+        self.rh_answer = None
+        self.rhetorical_reply_state = RHETORICAL_REPLY_STATE.DO_NOT_WAIT
+        self.started_waiting = time.time()
 
     def _remember(self, data: dict):
         pass
@@ -549,13 +562,21 @@ class IRCBot(pydle.Client):
             "\t usage -- this message \n"
             "\t die -- I will end my process \n"
             "\t forget -- I will nuke my brain cells \n"
+            "\t remember -- I will recite back to you from my memory (e.g. 'do you remember the 5th of november?')"
         )
         fun_things = (
             "These are the fun things I do:\n"
             "\t 🎶🎶 sometimes I siiing 🎶🎵 \n"
             "\t I try my best to remember stuff from the chat \n"
         )
-        usage_reply = commands + "\n" + fun_things
+        description = (
+            "Character description :\n"
+            "\t I am obsessed with Poetry and frequently sings to the extent that irritates you.\n"
+            "\t I like to show off about the things I know and pose rhetorical questions.\n"
+            "\t I follow musical bands and I update myself with the songs, artists and other information about the band.\n"
+            "\t Me being shy does not stop me from singing excessively\n"
+        )
+        usage_reply = commands + "\n" + fun_things + "\n" + description
         await self.message(target, usage_reply)
 
     async def _forget(self, msgs=[]):
@@ -710,7 +731,13 @@ class IRCBot(pydle.Client):
         REMEMBER: every `await` must happen inside an `async`
         REMEMBER: every `async` must be `await`-ed
         """
-        self._log()
+        self._log_self(
+            extra_msg=(
+                f"\t target:{target}\n"
+                f"\t source: {source}\n"
+                f"\t parsed_message: {parsed_message}\n"
+            )
+        )
         if parsed_message == "die":
             await self._die()
             return
@@ -748,6 +775,9 @@ class IRCBot(pydle.Client):
                         f'I remember when {top_hit_sender} said, "{top_hit_message}"',
                     )
             return
+        elif parsed_message == "memory_dump":
+            # TODO: just straight up dump all of the memory
+            return
         else:
             # await self._message_with_typing_lag(
             #     target, f"hmm.. let me think about that...: {parsed_message}"
@@ -762,6 +792,204 @@ class IRCBot(pydle.Client):
                 formatted_message = f"{recipient_id}: {text}{image}"
                 await self._message_with_typing_lag(self.channel, formatted_message)
             #  TODO: if bot_responses is empty, say IDK
+
+    async def _reply_song_details(self, target, message):
+        self._log_self(
+            extra_msg=(
+                "\n _reply_song_details \n"
+                f"\t target: {target}\n"
+                f"\t message: {message}\n"
+                f"\t self.cached_song_details: {self.cached_song_details}\n"
+            )
+        )
+        if self.cached_song_details is None:
+            await self._message_with_typing_lag(target, "...")
+            await self._message_with_typing_lag(target, message)
+            await self._message_with_typing_lag(target, "i am mocking you 🙃😊")
+
+        # if I have ever sang a song, then give some details
+        song_details = self.cached_song_details
+        song = song_details["song"]
+        artist = song_details["artist"]
+        genre = song_details["genre"]
+        year = song_details["year"]
+        song_detail_message = (
+            "Here's the details of the song I last sang:\n"
+            f"\t song: {song}\n"
+            f"\t artist: {artist}\n"
+            f"\t genre: {genre}\n"
+            f"\t year: {year}\n"
+        )
+        await self.message(target, song_detail_message)
+
+    async def _rhetorically_reply_song_details(self, target, message):
+        self._log_self(
+            extra_msg=(
+                "\n _rhetorically_reply_song_details \n"
+                f"\t target: {target}\n"
+                f"\t message: {message}\n"
+                f"\t self.cached_song_details: {self.cached_song_details}\n"
+            )
+        )
+        if self.cached_song_details is None:
+            await self._message_with_typing_lag(target, "...")
+            await self._message_with_typing_lag(target, message)
+            await self._message_with_typing_lag(target, "i am mocking you 🙃😊")
+            return
+
+        reply_format = "The {} of that song was {}"
+        song_details = self.cached_song_details
+        song = song_details["song"]
+        artist = song_details["artist"]
+        genre = song_details["genre"]
+        year = song_details["year"]
+
+        if "year" in message:
+            song_detail_message = reply_format.format("year", year)
+        elif "artist" in message:
+            song_detail_message = reply_format.format("artist", artist)
+        elif "genre" in message:
+            song_detail_message = reply_format.format("genre", genre)
+        else:
+            song_detail_message = reply_format.format("name", song)
+
+        await self.message(target, song_detail_message)
+        self.rh = similar.rhetoric(self.cached_song_details)
+        self.rh_question = random.choice(list(self.rh.keys()))
+        self.rh_answer = self.rh.get(self.rh_question)
+        await self._message_with_typing_lag(target, self.rh_question)
+        self._transition_rhetorical_state(start_waiting=True)
+
+    def _has_question(self, message):
+        self._log_self(extra_msg=(f"\n _has_question \n" f"\t message: {message}\n"))
+        doc = self.nlp(message)
+        for token in doc:
+            if token.tag_ in ["WDT", "WP", "WP$", "WRB"]:
+                return True
+
+    def _has_song_keywords(self, message):
+        self._log_self(
+            extra_msg=(f"\n _has_song_keywords \n" f"\t message: {message}\n")
+        )
+        keywords = [
+            "song",
+            "year",
+            "artist",
+            "genre",
+            "singer",
+            "band",
+            "album",
+        ]
+        return any([k in message for k in keywords])
+
+    def _get_music_emoji_string(self):
+        music_emojis = "🎸🎹🎺🎻🎼🪕🎷🥁🎧🎤🎶🎵"
+        return "".join([random.choice(music_emojis) for i in [1, 2, 3]])
+
+    def _is_followup_question(self, message):
+        """
+        Return True if the given message is a query about a previously sung song.
+        Else False.
+        """
+        self._log_self(
+            extra_msg=(f"\n _is_followup_question \n" f"\t message: {message}\n")
+        )
+        has_question = self._has_question(message)
+        has_song_keywords = self._has_song_keywords(message)
+        has_cached_song_details = self.cached_song_details is not None
+        self._log(
+            extra_msg=(
+                f"\n _is_followup_question \n"
+                f"\t has_question: {has_question}\n"
+                f"\t has_song_keywords: {has_song_keywords}\n"
+                f"\t has_cached_song_details: {has_cached_song_details}\n"
+            )
+        )
+        return has_question and has_song_keywords and has_cached_song_details
+
+    async def _sing(self, target, message):
+        """
+        Find a similar song, and start singing.
+        """
+        self._log_self(extra_msg=(f"\t target:{target}\n" f"\t message: {message}\n"))
+        # dict_keys(['song', 'lyrics', 'artist', 'genre', 'year', 'output'])
+        song_details = similar.similar(message)
+        self.cached_song_details = song_details
+        song = song_details["song"]
+        artist = song_details["artist"]
+        genre = song_details["genre"]
+        year = song_details["year"]
+        output = song_details["output"]
+        self._log(
+            extra_msg=(
+                f"\t song: {song}\n"
+                f"\t artist: {artist}\n"
+                f"\t genre: {genre}\n"
+                f"\t year: {year}\n"
+                f"\t output: {output}\n"
+            )
+        )
+        for o in output:
+            music_emojis = self._get_music_emoji_string()
+            await self._message_with_typing_lag(target, music_emojis)
+            await self._message_with_typing_lag(target, o)
+
+        music_emojis = self._get_music_emoji_string()
+        await self._message_with_typing_lag(target, music_emojis)
+
+    def _transition_rhetorical_state(
+        self, got_reply=False, start_waiting=False
+    ) -> RHETORICAL_REPLY_STATE:
+        """
+        always return the next state if transitioned?
+        """
+        prev_state = self.rhetorical_reply_state
+
+        now = time.time()
+        time_elapsed = now - self.started_waiting
+        im_bored = time_elapsed > self.FRUSTRATION_LIMIT
+
+        if prev_state == RHETORICAL_REPLY_STATE.DO_NOT_WAIT and start_waiting:
+            """
+            DO_NOT_WAIT -> WAITING_FOR_USER_REPLY
+            """
+            self.rhetorical_reply_state = RHETORICAL_REPLY_STATE.WAITING_FOR_USER_REPLY
+            self.started_waiting = time.time()
+            return self.rhetorical_reply_state
+
+        if prev_state == RHETORICAL_REPLY_STATE.WAITING_FOR_USER_REPLY and (
+            got_reply or im_bored
+        ):
+            """
+            WAITING_FOR_USER_REPLY -> DO_NOT_WAIT
+            """
+            self.rhetorical_reply_state = RHETORICAL_REPLY_STATE.DO_NOT_WAIT
+            return self.rhetorical_reply_state
+
+    async def _handle_talking_to_me(self, target, source, maybe_me, message):
+        self._log_self(
+            extra_msg=(
+                f"\t target:{target}\n"
+                f"\t source: {source}\n"
+                f"\t maybe_me: {maybe_me}\n"
+                f"\t message: {message}\n"
+            )
+        )
+
+        if self._is_followup_question(message):
+            self._log(
+                extra_msg=(
+                    "\n _is_followup_question is true \n"
+                    f"\t maybe_me: {maybe_me}\n"
+                    f"\t message: {message}\n"
+                    f"\t self.cached_song_details: {self.cached_song_details}\n"
+                )
+            )
+            await self._rhetorically_reply_song_details(target, message)
+        else:
+            await self._do_command(target, source, message)
+
+        return
 
     async def on_message(self, target, source, message):
         """
@@ -779,24 +1007,23 @@ class IRCBot(pydle.Client):
             # my own message
             return
 
-        # TODO: handle bot name mentioned `_they_talking_to_me`
-        # TODO: call `_do_command`
-        # TODO: implement memory
-        # .     1. pandas
-        # .     2. list
-        # .     3. CSV (append only) (forgettable)
-        # .     4. wait between 1-3 seconds between utterance
-        # .     5. say hello.
-        # .     6. usage. what do you do?
-        # .     7. all the traits (like Tweety table)
-        # .     8. Traits
-
         maybe_me, message = self._parse_me_message_pair(message)
 
         elastic_responses = save_to_memory(sender=source, message=message)
 
         async for res in elastic_responses:  # noqa
             self._log(extra_msg=(f"res: {res}"))
+
+        if (
+            self._transition_rhetorical_state(
+                got_reply=self._they_talking_to_me(maybe_me, message)
+            )
+            == RHETORICAL_REPLY_STATE.DO_NOT_WAIT
+        ):
+            await self._message_with_typing_lag(
+                target, f"yeaah..well... it's {self.rh_answer}"
+            )
+            return
 
         if self._they_talking_to_me(maybe_me, message):
             # if they're talking to me, I must parse the command.
@@ -807,8 +1034,7 @@ class IRCBot(pydle.Client):
                     f"\tmessage: {message}\n"
                 )
             )
-            await self._do_command(target, source, message)
-            return
+            await self._handle_talking_to_me(target, source, maybe_me, message)
         elif self._they_talking_about_me(maybe_me, message):
             self._log(
                 extra_msg=(
@@ -817,56 +1043,10 @@ class IRCBot(pydle.Client):
                     f"\tmessage: {message}\n"
                 )
             )
-            # dict_keys(['song', 'lyrics', 'artist', 'genre', 'year', 'output'])
-            song_details = similar.similar(message)
-            self.cached_song_details = song_details
-            song = song_details["song"]
-            artist = song_details["artist"]
-            genre = song_details["genre"]
-            year = song_details["year"]
-            output = song_details["output"]
-            self._log(
-                extra_msg=(
-                    f"\t song: {song}\n"
-                    f"\t artist: {artist}\n"
-                    f"\t genre: {genre}\n"
-                    f"\t year: {year}\n"
-                    f"\t output: {output}\n"
-                )
+            await self._message_with_typing_lag(
+                target=target,
+                message="💭 hmm... are they talking about me? should I interrupt? 💭",
             )
-            # Optionally we can: self._message_with_typing_lag
-            await self.message(target, output)
-            return
-        elif (
-            # TODO: use nltk.WH_WORDS or spacy.WH_WORDS whatever it is...
-            "who" in message
-            or "what" in message
-            or "when" in message
-            or "?" in message
-            and self.cached_song_details is not None
-        ):
-            self._log(
-                extra_msg=(
-                    "\n a question \n"
-                    f"\t maybe_me: {maybe_me}\n"
-                    f"\t message: {message}\n"
-                    f"\t self.cached_song_details: {self.cached_song_details}\n"
-                )
-            )
-            # if I have ever sang a song, then give some details
-            song_details = self.cached_song_details
-            song = song_details["song"]
-            artist = song_details["artist"]
-            genre = song_details["genre"]
-            year = song_details["year"]
-            song_detail_message = (
-                "Here's the details of the song I last sang:"
-                f"\t song: {song}\n"
-                f"\t artist: {artist}\n"
-                f"\t genre: {genre}\n"
-                f"\t year: {year}\n"
-            )
-            await self.message(target, song_detail_message)
             return
         else:
             self._log(
@@ -876,24 +1056,7 @@ class IRCBot(pydle.Client):
                     f"\tmessage: {message}\n"
                 )
             )
-            # dict_keys(['song', 'lyrics', 'artist', 'genre', 'year', 'output'])
-            song_details = similar.similar(message)
-            song = song_details["song"]
-            artist = song_details["artist"]
-            genre = song_details["genre"]
-            year = song_details["year"]
-            output = song_details["output"]
-            self._log(
-                extra_msg=(
-                    f"\t song: {song}\n"
-                    f"\t artist: {artist}\n"
-                    f"\t genre: {genre}\n"
-                    f"\t year: {year}\n"
-                    f"\t output: {output}\n"
-                )
-            )
-            # Optionally we can: self._message_with_typing_lag
-            await self.message(self.channel, output)
+            await self._sing(target, message)
             return
 
 
