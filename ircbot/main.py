@@ -848,21 +848,26 @@ class IRCBot(pydle.Client):
             await self._message_with_typing_lag(target, "i am mocking you 🙃😊")
             return
 
-        reply_format = "The {} of that song was {}"
+        # reply_format = "The {} of that song was {}"
         song_details = self.cached_song_details
         song = song_details["song"]
         artist = song_details["artist"]
         genre = song_details["genre"]
         year = song_details["year"]
 
-        if "year" in message:
-            song_detail_message = reply_format.format("year", year)
-        elif "artist" in message:
-            song_detail_message = reply_format.format("artist", artist)
+        if "year" in message or 'when' in message:
+            song_detail_message = "This song was released in the year {}".format(year)
+
+        elif "artist" in message or 'who' in message:
+            song_detail_message = "The artist of this song was {}".format(artist)
+
         elif "genre" in message:
-            song_detail_message = reply_format.format("genre", genre)
+            song_detail_message = "This song is of {} genre".format(genre)
+
+        elif 'what are you singing' in message:
+            song_detail_message = "The name of this song is {}".format(song)
         else:
-            song_detail_message = reply_format.format("name", song)
+            song_detail_message = "The name of this song is {}".format(song)
 
         await self.message(target, song_detail_message)
         self.rh = similar.rhetoric(self.cached_song_details)
@@ -889,7 +894,9 @@ class IRCBot(pydle.Client):
             "genre",
             "singer",
             "band",
+            "sung",
             "album",
+            'singing'
         ]
         return any([k in message for k in keywords])
 
