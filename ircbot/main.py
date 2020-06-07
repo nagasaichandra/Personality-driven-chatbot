@@ -866,6 +866,10 @@ class IRCBot(pydle.Client):
 
         elif 'what are you singing' in message:
             song_detail_message = "The name of this song is {}".format(song)
+
+        elif 'is that a song' in message or 'are you singing' in message or 'were you singing':
+            song_detail_message = "Yes I sing songs :)"
+
         else:
             song_detail_message = "The name of this song is {}".format(song)
 
@@ -881,6 +885,8 @@ class IRCBot(pydle.Client):
         doc = self.nlp(message)
         for token in doc:
             if token.tag_ in ["WDT", "WP", "WP$", "WRB"]:
+                return True
+            elif 'is that a song' or 'are you singing' or 'were you singing' in message:
                 return True
 
     def _has_song_keywords(self, message):
