@@ -29,6 +29,10 @@
 ## say goodbye
 * goodbye
   - utter_goodbye
+  
+## identity
+* identity
+ - utter_identity
 
 ## bot challenge
 * bot_challenge

@@ -7,30 +7,34 @@ intents:
   - mood_unhappy
   - bot_challenge
   - die
+  - identity
 
 # TODO: handle insults like "die"
 # https://rasa.com/docs/rasa/dialogue-elements/small-talk/#insults
 
 responses:
   utter_greet:
-  - text: "Hey! How are you?"
+  - text: "umm hehe hi! how are you?"
 
   utter_cheer_up:
-  - text: "Here is something to cheer you up:"
+  - text: "Here is something that makes me happy:"
     image: "https://i.imgur.com/nGF1K8f.jpg"
 
   utter_did_that_help:
   - text: "Did that help you?"
 
   utter_happy:
-  - text: "Great, carry on!"
+  - text: "ok cool.. have a nice day friend"
 
   utter_goodbye:
   - text: "Bye"
 
   utter_iamabot:
-  - text: "I am a bot, powered by Rasa."
+  - text: "I am a bot, I am usually shy."
+  - text: "People say that I am super shy."
 
+  utter_identity:
+  - text: "I am obsessed with Poetry and frequently sings to the extent that irritates you. I like to show off about the things I know and pose rhetorical questions. I follow musical bands and I update myself with the songs, artists and other information about the band. Me being shy does not stop me from singing excessively"
 actions:
   - action_hello_world
   - action_stop_program

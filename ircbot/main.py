@@ -703,6 +703,7 @@ class IRCBot(pydle.Client):
         if user == self.nickname:
             await self._message_with_typing_lag(channel, f"oh oops, that's me!")
             await self._message_with_typing_lag(channel, f"lol, hi everyone")
+            await self._message_with_typing_lag(channel, f"by the way I type slow, so please be patient...")
 
     async def on_connect(self):
         """
