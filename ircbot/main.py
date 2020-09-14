@@ -1087,6 +1087,6 @@ class IRCBot(pydle.Client):
 
 if __name__ == "__main__":
     client = IRCBot(
-        username="plato-bot", channel="#platobottest", realname="Student of Soccertees"
+        username="shy-bot", channel="#CPE582", realname="Student of Soccertees"
     )
     client.run(hostname="irc.freenode.net", tls=True, tls_verify=False)
